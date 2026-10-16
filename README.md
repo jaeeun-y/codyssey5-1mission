@@ -51,3 +51,18 @@ __
 3. _touch(key)       → 조회된 키를 LRU 리스트의 맨 앞으로 이동 (최근 사용으로 업데이트)
 
 ____
+  
+  
+Q. 만약 LRU 대신 LFU(Least Frequently Used) 정책을 구현 한다면 자료구조를 어떻게 변경해야 하는가?  
+A. 1. 메모리 퇴출용 LFU 최소 힙을 생성 (사용 횟수, 키)
+   2. key_to_freq: HashMap(key -> freq) (키별 사용 횟수 저장)
+   3. freq_to_nodes: HashMap(freq -> DoublyLinkedList) (동일한 사용 횟수를 가진 키들을 이중 연결 리스트로 묶음)
+   4. freg_to_nodes[min_freg] 리스트 맨 뒤 노드 삭제
+
+Q. 데이터가 10만 건으로 늘어나면 병목이 될 수 있는 부분과 개선 방안?
+A. 연속적인 RAM 접근이 실패하여 CPU L1/L2 캐시 미스가 빈번하게 일어남.
+  
+   ① Redis 스타일의 "근사 LRU (Approximated LRU)" 
+   포인터로 연결된 이중 연결 리스트 구조를 제거합니다. 대신 각 Key에 마지막 접근 시각(24-bit Timestamp)만 기록해 둡니다.  
+   퇴출이 필요할 때 전체 키 중 랜덤으로 N개(예: 5개)의 샘플을 추출한 뒤, 그중 가장 오래된 키 1개를 삭제합니다.  
+   연결 리스트 노드를 유지하기 위한 메모리가 사라지며, O(1)의 노드 재배치 과정(_touch) 자체가 없어져 CPU 캐시 효율이 극대화됩니다. (실제 Redis가 사용하는 방식)
